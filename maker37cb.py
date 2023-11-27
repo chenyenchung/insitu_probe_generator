@@ -92,28 +92,43 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     def max33(maxprobe,seqs,numbr):
         if maxprobe == 'y':
             if int(numbr) < int(len(seqs)):
+                # If there are more than set upper limit number of probes
+                # (non-overlapping and without long repeats)
                 reduced = []
                 entry = np.zeros(len(seqs))
                 if numbr == 0:
+                    # By default, keep 33 probes
                     keep = 33
                 else:
+                    # Otherwise, keep user-provided number of probes
                     keep = numbr             # this is the max number of probe pairs that ensures the cheapest opool at 50pmol
+
+                # Define the number of probes to skip
                 skip = (len(seqs))-keep
                 zeroesperones = int(skip/keep)
                 addtnl0s = skip-(keep*zeroesperones)
+                
+                # a: Count the numbers of probes kept
                 a = 0
+                # c: Count the probes skipped
                 c = 0
                 pos = 0
+                # 
+                # Always keep the first probe
                 while a < keep:
                     entry[pos] += 1
                     a += 1
                     pos += 1
                     if c < addtnl0s:
+                        # For each probe kept, skip one probe
                         entry[pos] += 0
                         c += 1
                         pos += 1
                     b = 0
                     while b < zeroesperones:
+                        # If there are more probes to skip than kept, than
+                        # skip some probes (defined by int(skip/kept)) whenever
+                        # there's one probe kept.
                         entry[pos] += 0
                         pos += 1
                         b += 1
@@ -228,15 +243,24 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
 
     name=str(name)
     
-
+    # Convert input sequence with bio.Seq()
     fullseq = Seq(fullseq)
+
+    # Get reverse_complement cDNA
     fullseq = fullseq.reverse_complement()
     fullseq = str(fullseq)
+    
+    # Get length
     cdna = len(fullseq)
+    
+    # 5' region to AVOID probes
     pause = int(pause)    
     
     
     amplifier=str((amplifier).upper())
+    
+    # Get amplifier sequence as a class
+    # TODO: Generalize this part?
     test=amp(amplifier)
     uspc=test[0]
     dspc=test[1]
@@ -244,60 +268,87 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     dninit=test[3]
 
     
-
+    # Define maximal number of same nucleotide repeat to tolerate
+    # i.e., dismiss anything >= tolerance + 1
     hpA = "A"*(polyAT+1)
     hpT = "T"*(polyAT+1)
     hpC = "C"*(polyCG+1)
     hpG = "G"*(polyCG+1)
 
+    # Get effective length (exclude 5' pause)
     position = cdna-pause
+    
+    # Define a 52-bp sweeping window from position 0 to the end.
+    # 52 = 25bp left probe + 2bp space + 25bp right probe
     start = np.arange(0,cdna-52,1)
     end = np.arange(52,cdna,1)
     table = np.vstack([start,end])
 
     cull = 'y'
     seqs={}
+
+    # Define a list of good positions (list of tuples (start, end)) to design
+    # probes
     pos=[]
 
 
+    # Iterating pointer
     a=0
     if cull == "y":
+        # Scan the sequence first for mono-base repeats
         while a < (position-52):
             if ((str(fullseq[table[0][a]:table[1][a]])).find(hpA) + (str(fullseq[table[0][a]:table[1][a]])).find(hpT) + (str(fullseq[table[0][a]:table[1][a]])).find(hpC) + (str(fullseq[table[0][a]:table[1][a]])).find(hpG) > -4):
+                # If long repeats of the same base is found, move the pointer
+                # forward and skip this window.
                 a += 1
             else:
+                # If no long repeat is found, add the current window to the
+                # position list
                 pos.append([table[0][a],table[1][a]])
                 a += 1
+
         ## Creating the first trace through the sequence looking for max number of probe sequences 
-        
         a = 0
+
         newlist = []
+
+        # Create lists to keep non-overlapping probe regions that are spaced by
+        # at least 2bp
+        
         newlista = []
         newlista2 = []
+
         newlistb = []
         newlistb2 = []
+
+        # Initialize the list with the first window
         strt=pos[0][0]
         stp=pos[0][1]
         newlista2.append([cdna-strt,cdna-stp])
         newlista.append([strt,stp])
-        while a < len(pos):    
+        while a < len(pos):
             if pos[a][0] > (stp + 2):
+                # Only keep a position if it is spaced with the previous
+                # region by at least 2bp    
                 strt = pos[a][0]
                 stp  = pos[a][1]
                 newlista2.append([cdna-strt,cdna-stp])
                 newlista.append([strt,stp])
                 a+=1
             else :
+                # Otherwise skip
                 a+=1
         lists = {}
         listz = {}
         listz[0] = newlista2
         lists[0] = newlista
-        
-        
-        
+                
         if choose == 'y':
-            ## creating a recursive search for a path that results in the greatest number of probe sequences given the cull
+            # If the user choose to select from multiple sets of probes
+            # create a recursive search by using each window as the start (
+            # as opposed to using the first window only) for overlap removal
+            # and look for a path that results in the greatest number of probe
+            # sequences given the cull
             b = 1
             for x in np.arange(1,len(pos),1):   
                 c=0
@@ -337,7 +388,8 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
             choice = "Default"
             newlist = np.array(lists[0])
     
-              
+        # Generate a probe mask that are all N's that has the same length
+        # as the cDNA provided
         graphic = ['n']*cdna
         
         count = str(len(newlist))
@@ -430,12 +482,21 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
             filterblastbad = []
             uniques = []
             uniquesbad = []
+            filterblastexo = []
+            uniquesexo = []
             while i < len(blastresult):
                 if (blastresult[i][11]>=75.0 and blastresult[i][10]<=float(1e-13)):  #abs(blastresult[i][9]-blastresult[i][8])>40 and abs(blastresult[i][9]-blastresult[i][8])<=60
+                    ## Good matches
                     filterblast.append(blastresult[i])
                     uniques.append((blastresult[i][0])) #str
                     i+=1
+                elif (blastresult[i][11]<30.0 and blastresult[i][10]>float(0)):
+                    ## Likely not in the genome (GFP & etc...)
+                    filterblastexo.append(blastresult[i])
+                    uniquesexo.append((blastresult[i][0])) #str
+                    i+=1
                 elif (blastresult[i][11]>=60.0 and blastresult[i][10]>float(1e-12)):
+                    ## Bad matches
                     filterblastbad.append(blastresult[i])
                     uniquesbad.append((blastresult[i][0])) #str
                     i+=1
@@ -444,12 +505,14 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
             
 
         
-            if len(filterblast) != 0:
+            if len(filterblast) + len(filterblastexo) != 0:
                 filterblast = np.array(filterblast)
                 uniques = np.unique((uniques))     ##
                 count = str((len(uniques)))
                 filterblastbad = np.array(filterblastbad)
-                uniquesbad = np.unique((uniquesbad)) 
+                uniquesbad = np.unique((uniquesbad))
+                filterblastexo = np.array(filterblastexo) 
+                uniquesexo = np.unique((uniquesexo))
                 if len(uniquesbad) > 0:
                     if dropout == 'y':
                         ind = 0

@@ -1,3 +1,7 @@
+import os.path
+
+FASTA_PATH = './dmel-all-chromosome-r6.54.fasta'
+
 def start():
 
     # These are required inputs
@@ -21,7 +25,11 @@ def start():
         BlastProbes = (str(input("Would you like to BLAST potential probes against a FASTA file?  Y or N   "))).lower()
         #BlastcDNA   = (str(input("Would you like BLAST the input cDNA against a FASTA file for comparison with the BLAST of probes?  Y or N   "))).lower()
         if (BlastProbes).lower() == 'y':
-            db          = str(input("Where is the FASTA file you would like to BLAST against? Example: 'C:/users/user/***.fasta' " ))
+            if os.path.isfile(FASTA_PATH):
+                db = FASTA_PATH
+            else:
+                db          = str(input("Where is the FASTA file you would like to BLAST against? Example: 'C:/users/user/***.fasta' " ))
+
             show        = (str(input("Do you want to display detailed BLAST outputs? Y or N   "))).lower()
             dropout     = (str(input("Do you want to eliminate probes that appear in low quaility BLAST outputs? Y or N   "))).lower()
         else:
