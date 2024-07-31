@@ -1,6 +1,6 @@
 import os.path
 
-FASTA_PATH = './dmel-all-chromosome-r6.54.fasta'
+FASTA_PATH = 'dmel-all-chromosome-r6.55.fasta'
 
 def start():
 
