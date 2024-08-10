@@ -1,4 +1,4 @@
-def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropout,show,report,maxprobe,numbr): 
+def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,polyTriplet,BlastProbes,db,dropout,show,report,maxprobe,numbr): 
     from Bio.Seq import Seq
     from Bio.Blast.Applications import NcbiblastnCommandline as bn
     import io
@@ -91,23 +91,28 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
 
     def max33(maxprobe,seqs,numbr):
         if maxprobe == 'y':
+            if numbr == 0:
+                # By default, keep 33 probes
+                numbr = 33
+                
+            if int(numbr) >=  int(len(seqs)):
+                print("There was were fewer than "+str(numbr)+" pairs, no action taken.")
+                return(seqs)
             if int(numbr) < int(len(seqs)):
                 # If there are more than set upper limit number of probes
                 # (non-overlapping and without long repeats)
+                # Define a binary array to keep track of which probes to keep
                 reduced = []
                 entry = np.zeros(len(seqs))
-                if numbr == 0:
-                    # By default, keep 33 probes
-                    keep = 33
-                else:
-                    # Otherwise, keep user-provided number of probes
-                    keep = numbr             # this is the max number of probe pairs that ensures the cheapest opool at 50pmol
+
+                # Otherwise, keep user-provided number of probes
+                keep = numbr             # this is the max number of probe pairs that ensures the cheapest opool at 50pmol
 
                 # Define the number of probes to skip
                 skip = (len(seqs))-keep
                 zeroesperones = int(skip/keep)
                 addtnl0s = skip-(keep*zeroesperones)
-                
+              
                 # a: Count the numbers of probes kept
                 a = 0
                 # c: Count the probes skipped
@@ -115,12 +120,13 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
                 pos = 0
                 # 
                 # Always keep the first probe
-                while a < keep:
+                while (a < keep) & (pos < len(entry)):
                     entry[pos] += 1
                     a += 1
                     pos += 1
                     if c < addtnl0s:
-                        # For each probe kept, skip one probe
+                        # If extra probes need to be skipped
+                        # skip one probe per probe kept
                         entry[pos] += 0
                         c += 1
                         pos += 1
@@ -131,12 +137,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
                         # there's one probe kept.
                         entry[pos] += 0
                         pos += 1
-                        b += 1
-                a=0
-                while a < addtnl0s-c:
-                    entry[pos] += 0
-                    pos += 1
-                    a+=1            
+                        b += 1    
                 a = 0
                 while a < len(seqs):
                     if entry[a] == 1:
@@ -146,9 +147,6 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
                         a+=1
                         pass     
                 return(reduced)
-        elif  int(numbr) >=  int(len(seqs)):
-            print("There was were fewer than "+str(numbr)+" pairs, no action taken.")
-            return(seqs)
         else:
             return(seqs)
 
@@ -244,6 +242,10 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     name=str(name)
     
     # Convert input sequence with bio.Seq()
+    # Remove spaces, newlines, and tabs
+    fullseq = fullseq.replace(" ", "")
+    fullseq = fullseq.replace("\n", "")
+    fullseq = fullseq.replace("\t", "")
     fullseq = Seq(fullseq)
 
     # Get reverse_complement cDNA
@@ -274,6 +276,9 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     hpT = "T"*(polyAT+1)
     hpC = "C"*(polyCG+1)
     hpG = "G"*(polyCG+1)
+    hpCAG = "GTC"*(polyTriplet + 1)
+    hpCTG = "GAC"*(polyTriplet + 1)
+    hpCGG = "GCC"*(polyTriplet + 1)
 
     # Get effective length (exclude 5' pause)
     position = cdna-pause
@@ -297,7 +302,8 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     if cull == "y":
         # Scan the sequence first for mono-base repeats
         while a < (position-52):
-            if ((str(fullseq[table[0][a]:table[1][a]])).find(hpA) + (str(fullseq[table[0][a]:table[1][a]])).find(hpT) + (str(fullseq[table[0][a]:table[1][a]])).find(hpC) + (str(fullseq[table[0][a]:table[1][a]])).find(hpG) > -4):
+            inputseq = str(fullseq[table[0][a]:table[1][a]])
+            if (inputseq.find(hpA) + inputseq.find(hpT) + inputseq.find(hpC) + inputseq.find(hpG) + inputseq.find(hpCAG) + inputseq.find(hpCTG) + inputseq.find(hpCGG) > -7):
                 # If long repeats of the same base is found, move the pointer
                 # forward and skip this window.
                 a += 1
@@ -622,7 +628,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
     print()
     print()
     if report == 'y':
-        print("Run "+str(date.today())+"\n   with settings: \n\t5'Pause:\t"+str(pause)+" \n\tChoice of probe set:\t"+str((choose))+"\tPair used: "+str(choice)+" \n\tLength of acceptable polyA/polyT runs:\t"+str(polyAT)+" \n\tLength of acceptable polyC/polyG runs:\t"+str(polyCG)+" \n\tBLASTn of Probes:\t"+str((BlastProbes))+" \n\tRemoval of probes with low quality BLAST hits:\t"+str((dropout)) )
+        print("Run "+str(date.today())+"\n   with settings: \n\t5'Pause:\t"+str(pause)+" \n\tChoice of probe set:\t"+str((choose))+"\tPair used: "+str(choice)+" \n\tLength of acceptable polyA/polyT runs:\t"+str(polyAT)+" \n\tLength of acceptable polyC/polyG runs:\t"+str(polyCG)+" \n\tNumber of acceptable triplets (CAG/CTG/CGG) runs:\t"+str(polyTriplet)+" \n\tBLASTn of Probes:\t"+str((BlastProbes))+" \n\tRemoval of probes with low quality BLAST hits:\t"+str((dropout)) )
 
     print()
     print()

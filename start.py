@@ -16,6 +16,7 @@ def start():
     pause       = int(input("How many bases from 5' end of the Sense RNA before starting to hybridize? ex. 100 "))
     polyAT      = int(input("What is the max acceptable length for polyA or polyT homopolymers? "))
     polyCG      = int(input("What is the max acceptable length for polyC or polyG homopolymers? "))
+    polyTriplet      = int(input("What is the max acceptable repeats of CAG/CTG/CGG triplets? "))
 
 
     if (input("Do you want to choose program options?  Y -or- N ")).upper() == 'Y':
@@ -53,6 +54,6 @@ def start():
         maxprobe='n'
         numbr = int(0)
 
-    return(name,fullseq,amplifier,pause,choose1,polyAT,polyCG,BlastProbes,db,dropout,show,report,maxprobe,numbr)
+    return(name,fullseq,amplifier,pause,choose1,polyAT,polyCG,polyTriplet,BlastProbes,db,dropout,show,report,maxprobe,numbr)
 
 
