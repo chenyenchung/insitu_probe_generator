@@ -474,7 +474,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,polyTriplet,BlastPro
             stdout, stderr = cline() #cline() calls the string as a command and passes it to the command line, outputting the blast results to one variable and errors to the other
 
             ## From results of blast creating a numpy array (and Pandas database)
-            dt = [(np.unicode_,8),(np.unicode_,40),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.float64),(np.float64)]
+            dt = [(np.str_,8),(np.str_,40),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.float64),(np.float64)]
             blastresult = (np.genfromtxt(io.StringIO(stdout),delimiter = '\t',dtype = dt))# "qseqid,sseqid,pident,length,mismatch,gapopen,qstart,qend,sstart,send,evalue,bitscore")
            
 
